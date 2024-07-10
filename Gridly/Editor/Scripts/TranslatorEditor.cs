@@ -1,35 +1,31 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
-using Gridly;
+
 namespace Gridly.Internal
 {
-    
     [CustomEditor(typeof(Translator))]
     public class TranslatorEditor : Editor
     {
-        GridlyArrData popupData = new GridlyArrData();
-
-        static string search = "";
-        Column chosenColum;
+        private GridlyArrData popupData = new GridlyArrData();
+        private Column chosenColum;
+        private string search = "";
+        
         private void OnEnable()
         {
             search = "";
         }
+        
         public override void OnInspectorGUI()
         {
-            
             base.OnInspectorGUI();
             Translator translator = (Translator)target;
 
-            if (!popupData.init)
+            if (!popupData.IsInitialized)
             {
-                Refesh();
-                
+                Refresh();
             }
 
-            if (Project.singleton.grids.Count == 0)
+            if (Project.Singleton.grids.Count == 0)
                 return;
 
             //Db
@@ -54,7 +50,7 @@ namespace Gridly.Internal
             if (EditorGUI.EndChangeCheck())
             {
                 EditorUtility.SetDirty(translator);
-                Refesh();
+                Refresh();
             }
             GUILayout.EndHorizontal();
             
@@ -67,17 +63,17 @@ namespace Gridly.Internal
 
             GUILayout.Space(5);
             EditorGUI.BeginChangeCheck();
-            search = GUILayout.TextField(search, GUI.skin.GetStyle("ToolbarSeachTextField"));
+            
+            search = GUILayout.TextField(search, GridlyUtilityEditor.SearchTextStyle);
+            
             if (EditorGUI.EndChangeCheck())
             {
-                
                 popupData.searchKey = search;
-                Refesh();
+                Refresh();
             }
 
             if (popupData.keyArr == null)
                 return;
-
 
             GUILayout.Space(5);
             GUILayout.BeginHorizontal();
@@ -87,11 +83,15 @@ namespace Gridly.Internal
             {
                 translator.key = popupData.keyArr[EditorGUILayout.Popup(popupData.indexKey, popupData.keyArr)];
             }
-            catch { GUILayout.Label("can't find key"); }
+            catch 
+            { 
+                GUILayout.Label("can't find key"); 
+            }
+            
             if (EditorGUI.EndChangeCheck())
             {
                 EditorUtility.SetDirty(translator);
-                Refesh();
+                Refresh();
 
             }
             GUILayout.EndHorizontal();
@@ -100,7 +100,7 @@ namespace Gridly.Internal
 
             try
             {
-                Languages main = UserData.singleton.mainLangEditor;
+                Languages main = UserData.Singleton.mainLangEditor;
                 GUILayout.BeginHorizontal();
                 GUILayout.Label(main.ToString() + ": ");
                 if (chosenColum != null)
@@ -108,32 +108,26 @@ namespace Gridly.Internal
                     chosenColum.text = GUILayout.TextArea(chosenColum.text);
                     if(GUILayout.Button(new GUIContent() {text = "Export" , tooltip = "Export text to Girdly" }, GUILayout.MinWidth(60)))
                     {
-                        GridlyFunctionEditor.editor.UpdateRecordLang(popupData.chosenRecord, popupData.grid.choesenViewID, UserData.singleton.mainLangEditor);
+                        GridlyFunctionEditor.editor.UpdateRecordLang(popupData.ChosenRecord, popupData.Grid.choesenViewID, UserData.Singleton.mainLangEditor);
                     }
                 }
     
                 GUILayout.EndHorizontal();
             }
             catch { }
-
-
         }
-
         
-
-        void Refesh()
+        private void Refresh()
         {
             Translator translator = (Translator)target;
-            popupData.RefeshAll(translator.grid, translator.key);
+            popupData.RefreshAll(translator.grid, translator.key);
 
             try
             {
-                Languages main = UserData.singleton.mainLangEditor;
-                chosenColum = popupData.chosenRecord.columns.Find(x => x.columnID == main.ToString());
+                Languages main = UserData.Singleton.mainLangEditor;
+                chosenColum = popupData.ChosenRecord.columns.Find(x => x.columnID == main.ToString());
             }
             catch { }
-            
         }
-
     }
 }

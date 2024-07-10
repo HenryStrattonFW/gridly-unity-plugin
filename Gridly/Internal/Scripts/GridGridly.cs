@@ -1,6 +1,5 @@
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
+
 namespace Gridly.Internal
 {
     [System.Serializable]
@@ -8,14 +7,14 @@ namespace Gridly.Internal
     {
         public string viewName;
         public string viewID;
+
         public ViewID(string viewName, string viewID)
         {
             this.viewName = viewName;
             this.viewID = viewID;
         }
     }
-     
-   
+
     [System.Serializable]
     public class Grid
     {
@@ -25,20 +24,37 @@ namespace Gridly.Internal
 
         public string choesenViewID;
         public List<Record> records = new List<Record>();
-        
+
+        private Dictionary<string, Record> recordLookup;
+
         public void CopyThisBlankGridTo(ref Grid grid)
         {
-         
             grid.databaseID = databaseID;
             grid.nameGrid = nameGrid;
             grid.gridID = gridID;
-            //grid.syncSchedule = new SyncSchedule(syncSchedule);
-
         }
+
         public Grid()
         {
+        }
 
+        public Record FindRecord(string recordId)
+        {
+            if (recordLookup == null)
+                CreateRecordLookup();
+
+            return recordLookup.TryGetValue(recordId, out var record)
+                ? record
+                : null;
+        }
+
+        private void CreateRecordLookup()
+        {
+            recordLookup = new Dictionary<string, Record>();
+            foreach (var rec in records)
+            {
+                recordLookup.Add(rec.recordID, rec);
+            }
         }
     }
-
 }

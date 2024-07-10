@@ -1,97 +1,70 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
-using Gridly;
 using Gridly.Internal;
-using System;
 using UnityEngine.Events;
-using UnityEditor;
-using System.IO;
-using System.Threading.Tasks;
+using UnityEngine.Serialization;
 
-//[ExecuteAlways]
 namespace Gridly
 {
     public class SyncDataGridly : MonoBehaviour
     {
-
-        public float process { 
-            get 
-            {
-                if (processNumberTotal != 0)
-                    return (float)processDone / processNumberTotal;
-                return 0;
-            } 
-        }
-
-        public int processNumberTotal => GridlyFunction.dowloadedTotal;
-        public int processDone => GridlyFunction.dowloadn;
-
-        public bool syncOnAwake = true;
-
-        public UnityEvent onDowloadComplete;
-        static GridlyFunction gridlyFunction = new GridlyFunction();
+        public static SyncDataGridly Singleton { get; private set; }
+        
+        private static GridlyFunction m_GridlyFunction = new GridlyFunction();
 
         
+        public static int ProgressNumberTotal => GridlyFunction.DownloadedTotal;
+        public static int ProgressDone => GridlyFunction.Download;
+        public static float Progress
+        {
+            get
+            {
+                if (ProgressNumberTotal == 0) return 0;
+                return (float)ProgressDone / ProgressNumberTotal;
+            }
+        }
+        
+        
+        [FormerlySerializedAs("syncOnAwake")]
+        [SerializeField] private bool m_SyncOnAwake = true;
+        
+        [FormerlySerializedAs("onDowloadComplete")]
+        [SerializeField] private UnityEvent m_OnDownloadComplete;
+        
 
-        public static SyncDataGridly singleton;
         private void Awake()
         {
-            if (singleton == null)
-                singleton = this;
-            else 
-            { 
+            if (Singleton != null && Singleton != this)
+            {
                 Destroy(gameObject);
-                return;
+                return; 
             }
+            
+            Singleton = this;
 
-            if (syncOnAwake)
+            if (m_SyncOnAwake)
                 StartSync();
- 
         }
-
 
         public void StartSync()
         {
-            if (string.IsNullOrEmpty(UserData.singleton.keyAPI))
+            if (string.IsNullOrEmpty(UserData.Singleton.KeyAPI))
             {
-                Debug.Log("Please enter yout api key to use this feature");
+                GridlyLogging.Log("Please enter your api key to use this feature");
                 return;
             }
 
-
-            //gridlyFunction.SetupDatabases();
-
-            
-
-
-            //apply new data when finish setup userlocal
-            gridlyFunction.finishAction = Finish;
+            // Apply new data when finish setup userlocal
+            m_GridlyFunction.finishAction = Finish;
         }
 
-        void Finish()
+        private void Finish()
         {
-            onDowloadComplete.Invoke();
+            m_OnDownloadComplete.Invoke();
         }
-
 
         private void Update()
         {
             GridlyFunction.process?.Invoke();
-
-        }
-
-              
-
-        private static List<string> getSceneNames()
-        {
-            List<string> names = new List<string>();
-            foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
-            {
-                names.Add(Path.GetFileNameWithoutExtension(scene.path));
-            }
-            return names;
         }
     }
-
 }

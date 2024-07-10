@@ -6,7 +6,6 @@ using UnityEngine;
 using System.Text;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using System.Collections;
 using Newtonsoft.Json;
 using System.Linq;
 
@@ -18,43 +17,34 @@ namespace Gridly.Internal
      */
     public class GridlyFunctionEditor : GridlyFunction
     {
-
-
         public static GridlyFunctionEditor editor = new GridlyFunctionEditor();
 
         #region GetColumn IDs
 
         public static async Task getGridlyColumnIds(string viewID)
         {
-            Debug.Log("Getting columnIds from Gridly server from view: " + viewID);
+            GridlyLogging.Log($"Getting columnIds from Gridly server from view: {viewID}");
 
-                using (UnityWebRequest webRequest = UnityWebRequest.Get("https://api.gridly.com/v1/views/" + viewID))
+            using (UnityWebRequest webRequest = UnityWebRequest.Get("https://api.gridly.com/v1/views/" + viewID))
+            {
+                webRequest.SetRequestHeader("Authorization", "ApiKey " + UserData.Singleton.KeyAPI);
+                // Request and wait for the desired page.
+                var req = webRequest.SendWebRequest();
+                               
+
+                while (!req.isDone)
+                    await Task.Yield();
+
+                if (webRequest.result == UnityWebRequest.Result.Success)
                 {
-                    webRequest.SetRequestHeader("Authorization", "ApiKey " + UserData.singleton.keyAPI);
-                    // Request and wait for the desired page.
-                    var req = webRequest.SendWebRequest();
-                                   
-
-                    while (!req.isDone)
-                        await Task.Yield();
-
-                    if (webRequest.result == UnityWebRequest.Result.Success)
-                    {
-                        GridlyEditor.gridlyResponse = webRequest.downloadHandler.text;
-                        Debug.Log("ColumnIds fetched from Gridly server!");
-                    }
-                    else
-                    {
-                        Debug.Log(webRequest.error);
-                    }
-
-
-
+                    GridlyEditor.gridlyResponse = webRequest.downloadHandler.text;
+                    GridlyLogging.Log("ColumnIds fetched from Gridly server!");
                 }
-
-
-
-
+                else
+                {
+                    GridlyLogging.LogError(webRequest.error);
+                }
+            }
         }
 
         #endregion
@@ -75,60 +65,52 @@ namespace Gridly.Internal
                 a = "{\"name\" : \"" + columnIdAndName + "\", \"type\" : \"" + type + "\", \"id\" : \"" + columnIdAndName + "\", \"languageCode\" : \"" + langCode + "\", \"isTarget\":\"" + isTarget + "\", \"isSource\": \"" + isSource + "\"}";
             }
 
-            Debug.Log(a);
+            GridlyLogging.Log(a);
 
-            var webRequest = new UnityWebRequest("https://api.gridly.com/v1/views/" + viewID + "/columns", "POST");
+            var webRequest = new UnityWebRequest($"https://api.gridly.com/v1/views/{viewID}/columns", "POST");
             byte[] jsonToSend = Encoding.ASCII.GetBytes(a);
             webRequest.uploadHandler = (UploadHandler)new UploadHandlerRaw(jsonToSend);
             webRequest.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
-            webRequest.SetRequestHeader("Authorization", "ApiKey " + UserData.singleton.keyAPI);
+            webRequest.SetRequestHeader("Authorization", "ApiKey {UserData.Singleton.KeyAPI}");
             webRequest.SetRequestHeader("Content-Type", "application/json");
             var req = webRequest.SendWebRequest();
-
 
             while (!req.isDone)
                 await Task.Yield();
 
             if (webRequest.result == UnityWebRequest.Result.Success)
             {
-                Debug.Log("Column for screenshots with name: " + columnIdAndName + " has been created.");
+                GridlyLogging.Log($"Column for screenshots with name: {columnIdAndName} has been created.");
                 return columnIdAndName;
             }
-            else
-            {
-                Debug.Log(webRequest.error);
-                return null;
-            }
-
+            
+            GridlyLogging.LogError(webRequest.error);
+            return null;
         }
         #endregion
 
         #region Delete Gridly column
         public static async Task deleteGridlyColumn(string viewID, string columnId)
         {
-
             var webRequest = new UnityWebRequest("https://api.gridly.com/v1/views/" + viewID + "/columns/" + columnId, "DELETE");
-            Debug.Log("https://api.gridly.com/v1/views/" + viewID + "/columns/" + columnId);
-
+            GridlyLogging.Log("https://api.gridly.com/v1/views/" + viewID + "/columns/" + columnId);
 
             webRequest.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
-            webRequest.SetRequestHeader("Authorization", "ApiKey " + UserData.singleton.keyAPI);
+            webRequest.SetRequestHeader("Authorization", "ApiKey " + UserData.Singleton.KeyAPI);
             webRequest.SetRequestHeader("Content-Type", "application/json");
             var req = webRequest.SendWebRequest();
-
 
             while (!req.isDone)
                 await Task.Yield();
 
             if (webRequest.result == UnityWebRequest.Result.Success)
             {
-                Debug.Log("Column deleted with ID: " + columnId + " has been deleted.");
+                GridlyLogging.Log("Column deleted with ID: " + columnId + " has been deleted.");
             }
             else
             {
-                Debug.Log(webRequest.error);
+                GridlyLogging.LogError(webRequest.error);
             }
-
         }
 
         #endregion
@@ -136,12 +118,12 @@ namespace Gridly.Internal
         #region Image upload
         public async Task uploadImage(string viewID, string langCode, string recordId, string sceneName)
         {
-            string rootPath = UserData.singleton.screenshotPath;
+            string rootPath = UserData.Singleton.ScreenshotPath;
             string screenshotPath = Path.Combine(rootPath, langCode, sceneName + ".png");
 
             string columnIdAndName = langCode + "_Screenshot";
 
-            Debug.Log(File.Exists(screenshotPath));
+            GridlyLogging.Log($"Screenshot path exists? {File.Exists(screenshotPath)}");
 
             if (File.Exists(screenshotPath))
             {
@@ -152,11 +134,11 @@ namespace Gridly.Internal
                 form.AddField("recordId", recordId);
                 form.AddField("columnId", columnIdAndName);
                 form.AddField("path", sceneName);
+                
+                GridlyLogging.Log($"{viewID} {recordId} {sceneName} {columnIdAndName}");
 
-                Debug.Log(viewID + " " + recordId + " " + sceneName + " " + columnIdAndName);
-
-                UnityWebRequest webRequest = UnityWebRequest.Post("https://api.gridly.com/v1/views/" + viewID + "/files", form);
-                webRequest.SetRequestHeader("Authorization", "ApiKey " + UserData.singleton.keyAPI);
+                UnityWebRequest webRequest = UnityWebRequest.Post($"https://api.gridly.com/v1/views/{viewID}/files", form);
+                webRequest.SetRequestHeader("Authorization", $"ApiKey {UserData.Singleton.KeyAPI}");
 
                 var req = webRequest.SendWebRequest();
 
@@ -167,11 +149,11 @@ namespace Gridly.Internal
 
                 if (webRequest.result == UnityWebRequest.Result.Success)
                 {
-                    Debug.Log("Screenshot uploaded to column: " + columnIdAndName + " and record: " + recordId);
+                    GridlyLogging.Log($"Screenshot uploaded to column: {columnIdAndName} and record: {recordId}");
                 }
                 else
                 {
-                    Debug.Log(webRequest.error);
+                    GridlyLogging.LogError(webRequest.error);
                 }
             }
         }
@@ -188,7 +170,7 @@ namespace Gridly.Internal
             byte[] jsonToSend = Encoding.ASCII.GetBytes(a);
             webRequest.uploadHandler = (UploadHandler)new UploadHandlerRaw(jsonToSend);
             webRequest.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
-            webRequest.SetRequestHeader("Authorization", "ApiKey " + UserData.singleton.keyAPI);
+            webRequest.SetRequestHeader("Authorization", "ApiKey " + UserData.Singleton.KeyAPI);
             webRequest.SetRequestHeader("Content-Type", "application/json");
             var req = webRequest.SendWebRequest();
 
@@ -198,11 +180,11 @@ namespace Gridly.Internal
 
             if (webRequest.result == UnityWebRequest.Result.Success)
             {
-                Debug.Log("Screenshot record with ID: " + recordId + " cleared.");
+                GridlyLogging.Log($"Screenshot record with ID: {recordId} cleared.");
             }
             else
             {
-                Debug.Log(webRequest.error);
+                GridlyLogging.LogError(webRequest.error);
             }
 
 
@@ -221,7 +203,7 @@ namespace Gridly.Internal
             UploadHandler uploadHandler = new UploadHandlerRaw(data);
             UnityWebRequest unityWeb = new UnityWebRequest("https://api.gridly.com/v1/views/" + viewID + "/records", "DELETE", downloadHandler, uploadHandler);
             unityWeb.SetRequestHeader("Content-Type", "application/json");
-            unityWeb.SetRequestHeader("Authorization", "ApiKey " + UserData.singleton.keyAPI);
+            unityWeb.SetRequestHeader("Authorization", "ApiKey " + UserData.Singleton.KeyAPI);
             unityWeb.SendWebRequest();
             void action()
             {
@@ -274,11 +256,11 @@ namespace Gridly.Internal
         {
             List<GridlyRecord.Records> gridlyRecords = new List<GridlyRecord.Records>();
 
-            Debug.Log("Getting columnIds from Gridly server.");
+            GridlyLogging.Log("Getting columnIds from Gridly server.");
 
             using (UnityWebRequest webRequest = UnityWebRequest.Get("https://api.gridly.com/v1/views/" + viewID + "/records?columnIds=" + columnID))
             {
-                webRequest.SetRequestHeader("Authorization", "ApiKey " + UserData.singleton.keyAPI);
+                webRequest.SetRequestHeader("Authorization", "ApiKey " + UserData.Singleton.KeyAPI);
                 // Request and wait for the desired page.
                 var req = webRequest.SendWebRequest();
 
@@ -287,28 +269,24 @@ namespace Gridly.Internal
 
                 if (webRequest.result == UnityWebRequest.Result.Success)
                 {
-                    Debug.Log("GetSourceCol: " + webRequest.downloadHandler.text);
+                    GridlyLogging.Log($"GetSourceCol: {webRequest.downloadHandler.text}");
                     gridlyRecords = JsonConvert.DeserializeObject<List<GridlyRecord.Records>>(webRequest.downloadHandler.text);
-                    Debug.Log("ColumnIds fetched from Gridly server!");
+                    GridlyLogging.Log("ColumnIds fetched from Gridly server!");
                 }
                 else
                 {
-                    Debug.Log(webRequest.error);
+                    GridlyLogging.LogError(webRequest.error);
                 }
-
-
-
             }
-            Debug.Log(gridlyRecords.Count);
-
+            
+            GridlyLogging.Log($"Fetched {gridlyRecords?.Count ?? 0} records.");
 
             return gridlyRecords;
-
         }
 
         private bool isChangedRecord(List<GridlyRecord.Records> records, string text)
         {
-            bool exist = records.Where(txt => txt.cells.Where(x => x.Value == text).Any()).Any();
+            bool exist = records.Where(txt => txt.Cells.Where(x => x.Value == text).Any()).Any();
 
             return exist;
 
@@ -316,7 +294,7 @@ namespace Gridly.Internal
 
         public async void AddUpdateRecordAll(List<Record> records, string viewID, int from, int to, bool isAdd = true, bool isTargetLang = false)
         {
-            string columnId = GetColumnId(records[0], UserData.singleton.mainLangEditor);
+            string columnId = GetColumnId(records[0], UserData.Singleton.mainLangEditor);
             List<GridlyRecord.Records> sourceColumn = await getSourceColumn(viewID, columnId);
 
             foreach(Record rec in records.ToList())
@@ -334,7 +312,6 @@ namespace Gridly.Internal
 
             string a = "[";
             int maxLength = records.Count;
-            //Debug.Log(from + " " + to + " " + maxLength);
             for (int i = from; i < to; i++)
             {
                 if (i >= maxLength)
@@ -342,12 +319,12 @@ namespace Gridly.Internal
 
                 Record record = records[i];
 
-                if (Project.singleton.SendIfChanged)
+                if (Project.Singleton.SendIfChanged)
                 {
 
                     if (!isChangedRecord(sourceColumn, record.columns.Where(txt => txt.columnID == columnId).FirstOrDefault().text))
                     {
-                        if (Project.singleton.DataToSendSelectedItems.Where(d => d.Contains("Source text")).Any())
+                        if (Project.Singleton.DataToSendSelectedItems.Where(d => d.Contains("Source text")).Any())
                         {
                             if (!isTargetLang)
                             {
@@ -362,27 +339,27 @@ namespace Gridly.Internal
                                 if (recordsToSend > 0 && a[a.Length - 1] != ',')
                                     a += ",";
                                 recordsToSend++;
-                                a += "{\"id\": \"" + record.recordID + "\",\"path\": \"" + record.pathTag + "\",\"cells\": [" + GetCodeLang(record, UserData.singleton.mainLangEditor) + "]}";
+                                a += "{\"id\": \"" + record.recordID + "\",\"path\": \"" + record.pathTag + "\",\"cells\": [" + GetCodeLang(record, UserData.Singleton.mainLangEditor) + "]}";
 
                             }
-                            if (Project.singleton.DataToSendSelectedItems.Where(d => d.Contains("screenshots")).Any())
+                            if (Project.Singleton.DataToSendSelectedItems.Where(d => d.Contains("screenshots")).Any())
                             {
-                                Debug.Log(UserData.singleton.mainLangEditor);
-                                await uploadImage(viewID, GetColumnId(record, UserData.singleton.mainLangEditor), record.recordID, record.pathTag);
+                                Debug.Log(UserData.Singleton.mainLangEditor);
+                                await uploadImage(viewID, GetColumnId(record, UserData.Singleton.mainLangEditor), record.recordID, record.pathTag);
                             }
                         }
 
-                        if (Project.singleton.DataToSendSelectedItems.Where(d => d.Contains("All target")).Any())
+                        if (Project.Singleton.DataToSendSelectedItems.Where(d => d.Contains("All target")).Any())
                         {
-                            foreach (LangSupport lang in Project.singleton.langSupports)
+                            foreach (LangSupport lang in Project.Singleton.langSupports)
                             {
-                                if (UserData.singleton.mainLangEditor.ToString() != lang.name)
+                                if (UserData.Singleton.mainLangEditor.ToString() != lang.name)
                                     await uploadImage(viewID, lang.name, record.recordID, record.pathTag);
                             }
                         }
                         else
                         {
-                            foreach (string lang in Project.singleton.DataToSendSelectedItems)
+                            foreach (string lang in Project.Singleton.DataToSendSelectedItems)
                             {
                                 if (lang.Length == 4)
                                 {
@@ -396,7 +373,7 @@ namespace Gridly.Internal
                 }
                 else
                 {
-                    if (Project.singleton.DataToSendSelectedItems.Where(d => d.Contains("Source text")).Any())
+                    if (Project.Singleton.DataToSendSelectedItems.Where(d => d.Contains("Source text")).Any())
                     {
                         if (!isTargetLang)
                         {
@@ -411,26 +388,26 @@ namespace Gridly.Internal
                             if (recordsToSend > 0 && a[a.Length - 1] != ',')
                                 a += ",";
                             recordsToSend++;
-                            a += "{\"id\": \"" + record.recordID + "\",\"path\": \"" + record.pathTag + "\",\"cells\": [" + GetCodeLang(record, UserData.singleton.mainLangEditor) + "]}";
+                            a += "{\"id\": \"" + record.recordID + "\",\"path\": \"" + record.pathTag + "\",\"cells\": [" + GetCodeLang(record, UserData.Singleton.mainLangEditor) + "]}";
 
                         }
-                        if (Project.singleton.DataToSendSelectedItems.Where(d => d.Contains("screenshots")).Any())
+                        if (Project.Singleton.DataToSendSelectedItems.Where(d => d.Contains("screenshots")).Any())
                         {
-                            await uploadImage(viewID, GetColumnId(record, UserData.singleton.mainLangEditor), record.recordID, record.pathTag);
+                            await uploadImage(viewID, GetColumnId(record, UserData.Singleton.mainLangEditor), record.recordID, record.pathTag);
                         }
                     }
 
-                    if (Project.singleton.DataToSendSelectedItems.Where(d => d.Contains("All target")).Any())
+                    if (Project.Singleton.DataToSendSelectedItems.Where(d => d.Contains("All target")).Any())
                     {
-                        foreach (LangSupport lang in Project.singleton.langSupports)
+                        foreach (LangSupport lang in Project.Singleton.langSupports)
                         {
-                            if (UserData.singleton.mainLangEditor.ToString() != lang.name)
+                            if (UserData.Singleton.mainLangEditor.ToString() != lang.name)
                                 await uploadImage(viewID, lang.name, record.recordID, record.pathTag);
                         }
                     }
                     else
                     {
-                        foreach (string lang in Project.singleton.DataToSendSelectedItems)
+                        foreach (string lang in Project.Singleton.DataToSendSelectedItems)
                         {
                             if (lang.Length == 4)
                             {
@@ -457,14 +434,12 @@ namespace Gridly.Internal
             //a.Print();
             if (recordsToSend > 0)
             {
-                Debug.Log("Sending " + recordsToSend + " records to gridly.");
-                //Debug.LogError(a);
-
+                GridlyLogging.Log($"Sending {recordsToSend} records to gridly.");
                 AddUpdateRecord(a, viewID, isAdd);
             }
             else
             {
-                Debug.Log("No records to send.");
+                GridlyLogging.Log("No records to send.");
             }
         }
 
@@ -486,7 +461,7 @@ namespace Gridly.Internal
             }
 
             unityWeb.SetRequestHeader("Content-Type", "application/json");
-            unityWeb.SetRequestHeader("Authorization", "ApiKey " + UserData.singleton.keyAPI);
+            unityWeb.SetRequestHeader("Authorization", "ApiKey " + UserData.Singleton.KeyAPI);
             unityWeb.SendWebRequest();
 
 
@@ -496,9 +471,9 @@ namespace Gridly.Internal
         public static async Task<string> SetDependency(string targetColmnId, string viewID)
         {
                 
-            string sourceColumnId = UserData.singleton.mainLangEditor.ToString();
+            string sourceColumnId = UserData.Singleton.mainLangEditor.ToString();
 
-            Debug.Log("{\"sourceColumnId\": \"" + sourceColumnId + "\", \"targetColumnId\": \"" + targetColmnId + "\" }");
+            GridlyLogging.Log("{\"sourceColumnId\": \"" + sourceColumnId + "\", \"targetColumnId\": \"" + targetColmnId + "\" }");
 
             string a = "{\"sourceColumnId\": \"" + sourceColumnId + "\", \"targetColumnId\": \"" + targetColmnId + "\" }";
 
@@ -507,7 +482,7 @@ namespace Gridly.Internal
             byte[] jsonToSend = Encoding.ASCII.GetBytes(a);
             webRequest.uploadHandler = (UploadHandler)new UploadHandlerRaw(jsonToSend);
             webRequest.downloadHandler = (DownloadHandler)new DownloadHandlerBuffer();
-            webRequest.SetRequestHeader("Authorization", "ApiKey " + UserData.singleton.keyAPI);
+            webRequest.SetRequestHeader("Authorization", "ApiKey " + UserData.Singleton.KeyAPI);
             webRequest.SetRequestHeader("Content-Type", "application/json");
             var req = webRequest.SendWebRequest();
 
@@ -517,15 +492,14 @@ namespace Gridly.Internal
 
             if (webRequest.result == UnityWebRequest.Result.Success)
             {
-                Debug.Log("Dependency created.");
+                GridlyLogging.Log("Dependency created.");
                 return webRequest.result.ToString();
             }
             else
             {
-                Debug.LogError(webRequest.error);
+                GridlyLogging.LogError(webRequest.error);
                 return webRequest.error;
             }
-
         }
 
 
@@ -539,10 +513,9 @@ namespace Gridly.Internal
                     str += ",";
                 str += "{\"columnId\": \"" + record.columns[i].columnID + "\",\"value\": \"" + TextDataUploadHandle(record.columns[i].text, ref record) + "\"}";
             }
-
-
             return str;
         }
+        
         static string GetCodeLang(Record record, Languages languages)
         {
             string str = "";
@@ -555,13 +528,11 @@ namespace Gridly.Internal
                     break;
                 }
             }
-
-
             return str;
         }
+        
         static string GetColumnId(Record record, Languages languages)
         {
-
             int length = record.columns.Count;
             for (int i = 0; i < length; i++)
             {
@@ -571,8 +542,6 @@ namespace Gridly.Internal
 
                 }
             }
-
-
             return null;
         }
 
@@ -585,7 +554,7 @@ namespace Gridly.Internal
             {
                 foreach (var i in record.columns)
                 {
-                    if (i.columnID == UserData.singleton.mainLangEditor.ToString())
+                    if (i.columnID == UserData.Singleton.mainLangEditor.ToString())
                     {
                         output = i.text;
                         break;
@@ -606,7 +575,7 @@ namespace Gridly.Internal
                 {
                     EditorApplication.update -= action.Invoke;
                     if (printServerMes)
-                        ("Server Message: " + unityWebRequest.downloadHandler.text).Print();
+                        GridlyLogging.Log($"Server Message: {unityWebRequest.downloadHandler.text}");
                 }
             };
 
@@ -616,16 +585,12 @@ namespace Gridly.Internal
 
         public override void SaveProject()
         {
-            Project.singleton.Save();
+            Project.Singleton.Save();
         }
+        
         public override void SetDirty()
         {
-            Project.singleton.setDirty();
+            EditorUtility.SetDirty(Project.Singleton);
         }
-
-
-
     }
-
-
 }

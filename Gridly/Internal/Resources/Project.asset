@@ -207,27 +207,27 @@ MonoBehaviour:
   - languagesSuport: 0
     name: enUS
     screenshotColumnId: enUS_Screenshot
-    font: {fileID: 0}
+    font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
     tmFont: {fileID: 0}
   - languagesSuport: 9
     name: plPL
     screenshotColumnId: plPL_Screenshot
-    font: {fileID: 0}
+    font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
     tmFont: {fileID: 0}
   - languagesSuport: 10
     name: ptBR
     screenshotColumnId: ptBR_Screenshot
-    font: {fileID: 0}
+    font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
     tmFont: {fileID: 0}
   - languagesSuport: 6
     name: itIT
     screenshotColumnId: itIT_Screenshot
-    font: {fileID: 0}
+    font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
     tmFont: {fileID: 0}
   - languagesSuport: 5
     name: deDE
     screenshotColumnId: deDE_Screenshot
-    font: {fileID: 0}
+    font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
     tmFont: {fileID: 0}
   LangsToTakeScreenshotList:
   - plPL

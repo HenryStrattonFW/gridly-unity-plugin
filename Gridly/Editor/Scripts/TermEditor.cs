@@ -1,35 +1,32 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
-using UnityEditor.SceneManagement;
-using UnityEngine.SceneManagement;
-using System;
 using System.IO;
 using System.Linq;
+
 namespace Gridly.Internal
 {
     public class TermEditor : GridlyEditor
     {
-        Vector3 m_Scroll = new Vector3();
         public static TermEditor window;
 
-        static int gridSelectIndex;
-        static int pathSelectedIndex;
+        private Vector2 m_ScrollPosition;
+        private static int gridSelectIndex;
+        private static int pathSelectedIndex;
 
-        static Grid grid
+        private static Grid Grid
         {
             get
             {
                 try
                 {
-                    return Project.singleton.grids[gridSelectIndex];
+                    return Project.Singleton.grids[gridSelectIndex];
                 }
                 catch
                 {
                     gridSelectIndex = 0;
                     Refesh();
-                    return Project.singleton.grids[gridSelectIndex];
+                    return Project.Singleton.grids[gridSelectIndex];
                 }
             }
         }
@@ -38,17 +35,18 @@ namespace Gridly.Internal
         [MenuItem("Tools/Gridly/String Editor", false, 0)]
         private static void Init()
         {
-            if (Project.singleton.grids.Count == 0)
+            if (Project.Singleton.grids.Count == 0)
             {
-                "you need to setup data before using this feature".Print();
+                EditorUtility.DisplayDialog("No Data", "You need to setup data before using this feature", "Okay");
                 return;
             }
 
-            window = (TermEditor)GetWindow(typeof(TermEditor), false, "String Editor - " + GridlyInfo.ver);
-            Vector2 vector2 = new Vector2(400, 400);
-            window.minSize = vector2;
+            window = (TermEditor)GetWindow(typeof(TermEditor), false, $"String Editor - {GridlyInfo.ver}");
+            window.minSize = new Vector2(400, 400);
+            
             PopulateDataSendList();
             Refesh();
+            
             window.Show();
         }
 
@@ -57,20 +55,18 @@ namespace Gridly.Internal
             if (window != null)
             {
                 window.Repaint();
-
             }
         }
 
         public static void PopulateDataSendList()
         {
+            Project.Singleton.DataToSend.Clear();
+            Project.Singleton.DataToSend.Add("Source text");
+            Project.Singleton.DataToSend.Add("Source text and screenshots");
 
-            Project.singleton.DataToSend.Clear();
-            Project.singleton.DataToSend.Add("Source text");
-            Project.singleton.DataToSend.Add("Source text and screenshots");
-
-            foreach (LangSupport lang in Project.singleton.langSupports)
+            foreach (LangSupport lang in Project.Singleton.langSupports)
             {
-                Project.singleton.DataToSend.Add(lang.name);
+                Project.Singleton.DataToSend.Add(lang.name);
             }
         }
 
@@ -85,16 +81,17 @@ namespace Gridly.Internal
 
             OnEnableEditor();
             init = true;
-            popupData.RefeshAll(gridSelect, null);
+            popupData.RefreshAll(gridSelect, null);
             RefeshList();
             paths = getSceneList().ToArray();
-            Debug.Log("record count " + records.Count);
+            GridlyLogging.Log($"record count {records.Count}");
         }
+        
         static void RefeshList()
         {
             if (popupData.indexGrid == -1)
                 return;
-            records = getRecord(grid);
+            records = GetRecord(Grid);
             TermListLegth = records.Count;
 
         }
@@ -105,8 +102,6 @@ namespace Gridly.Internal
             list.Add("");
             foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
             {
-                //Debug.Log(scene.path);
-                //Debug.Log("loading level");
                 list.Add(Path.GetFileNameWithoutExtension(scene.path));
 
             }
@@ -122,12 +117,12 @@ namespace Gridly.Internal
         static string search;
         float res = 0;
         int countReset = 0;
-        static List<Record> getRecord(Grid grid)
+        private static List<Record> GetRecord(Grid grid)
         {
             if (!string.IsNullOrEmpty(search))
             {
                 return grid.records.FindAll(x => x.recordID.ToLower().Contains(search.ToLower()) |
-                    x.columns.Find(x => x.columnID == UserData.singleton.mainLangEditor.ToString() & x.text.ToLower().Contains(search.ToLower())) != null
+                    x.columns.Find(x => x.columnID == UserData.Singleton.mainLangEditor.ToString() & x.text.ToLower().Contains(search.ToLower())) != null
                 );
             }
             return grid.records;
@@ -153,8 +148,8 @@ namespace Gridly.Internal
             gridSelect = popupData.gridArr[gridSelectIndex];
             if (EditorGUI.EndChangeCheck())
             {
-                m_Scroll = Vector3.zero;
-                UserData.singleton.Save();
+                m_ScrollPosition = Vector2.zero;
+                UserData.Singleton.Save();
                 Refesh();
                 return;
             }
@@ -168,24 +163,24 @@ namespace Gridly.Internal
             GUILayout.BeginHorizontal();
 
             EditorGUI.BeginChangeCheck();
-            search = GUILayout.TextField(search, GUI.skin.GetStyle("ToolbarSeachTextField"));
+            search = GUILayout.TextField(search, GridlyUtilityEditor.SearchTextStyle);
             if (EditorGUI.EndChangeCheck())
             {
                 RefeshList();
                 //selectRecordID = "";
-                m_Scroll = Vector3.zero;
+                m_ScrollPosition = Vector3.zero;
                 //showCreateKey = false;
             }
             GUILayout.Label("Search", GUILayout.Width(60));
 
             if (GUILayout.Button(new GUIContent() { text = "▲", tooltip = "Scroll to the top" }, GUILayout.Width(35)))
             {
-                m_Scroll.y = 0;
+                m_ScrollPosition.y = 0;
             }
 
             if (GUILayout.Button(new GUIContent() { text = "▼", tooltip = "Scroll to the bottom" }, GUILayout.Width(35)))
             {
-                m_Scroll.y = TermListLegth * mRowSize;
+                m_ScrollPosition.y = TermListLegth * mRowSize;
                 showCreateKey = true;
                 OnGUI();
             }
@@ -197,11 +192,11 @@ namespace Gridly.Internal
             GUILayout.Space(5);
 
 
-            m_Scroll = GUILayout.BeginScrollView(m_Scroll, TextStyle, GUILayout.MinHeight(ScrolSizeY), GUILayout.ExpandHeight(true));
+            m_ScrollPosition = GUILayout.BeginScrollView(m_ScrollPosition, TextStyle, GUILayout.MinHeight(ScrolSizeY), GUILayout.ExpandHeight(true));
 
 
             if (Event.current != null && Event.current.type == EventType.Layout)
-                scrollHeight = m_Scroll.y;
+                scrollHeight = m_ScrollPosition.y;
 
             #region draw record
 
@@ -277,15 +272,15 @@ namespace Gridly.Internal
             {
                 if (EditorUtility.DisplayDialog("Confirm Import Grid", "Are you sure you want to import Grid from Gridly?. It will overwrite the old data including translations.", "Yes", "Cancel"))
                 {
-                    popupData.grid.records.Clear();
+                    popupData.Grid.records.Clear();
                     Refesh();
                     RepaintThis();
 
                     GridlyFunctionEditor.editor.doneOneProcess += Refesh;
                     GridlyFunctionEditor.editor.doneOneProcess += RepaintThis;
 
-                    GridlyFunctionEditor.editor.RefeshDowloadTotal();
-                    GridlyFunctionEditor.editor.SetupRecords(popupData.grid, 0);
+                    GridlyFunctionEditor.editor.RefreshDownloadTotal();
+                    GridlyFunctionEditor.editor.SetupRecords(popupData.Grid, 0);
                 }
             }
 
@@ -301,27 +296,27 @@ namespace Gridly.Internal
 
 
             GenericMenu menu = new GenericMenu();
-            menu.AddItem(new GUIContent("Language screenshots/All target language screenshots"), Project.singleton.DataToSendSelectedItems.Contains("All target language screenshots"), OnColorSelected, "All target language screenshots");
+            menu.AddItem(new GUIContent("Language screenshots/All target language screenshots"), Project.Singleton.DataToSendSelectedItems.Contains("All target language screenshots"), OnColorSelected, "All target language screenshots");
 
-            foreach (string data in Project.singleton.DataToSendSelectedItems.ToList())
+            foreach (string data in Project.Singleton.DataToSendSelectedItems.ToList())
             {
-                if (!Project.singleton.DataToSend.Contains(data))
+                if (!Project.Singleton.DataToSend.Contains(data))
                 {
-                    Project.singleton.DataToSendSelectedItems.Remove(data);
+                    Project.Singleton.DataToSendSelectedItems.Remove(data);
                 }
             }
 
-            foreach (string item in Project.singleton.DataToSend)
+            foreach (string item in Project.Singleton.DataToSend)
             {
                 if (item.Length > 4)
                 {
-                    menu.AddItem(new GUIContent(item), Project.singleton.DataToSendSelectedItems.Contains(item), OnColorSelected, item);
+                    menu.AddItem(new GUIContent(item), Project.Singleton.DataToSendSelectedItems.Contains(item), OnColorSelected, item);
                 }
                 else
                 {
-                    if (item != UserData.singleton.mainLangEditor.ToString())
+                    if (item != UserData.Singleton.mainLangEditor.ToString())
                     {
-                        menu.AddItem(new GUIContent("Language screenshots/" + item), Project.singleton.DataToSendSelectedItems.Contains(item), OnColorSelected, item);
+                        menu.AddItem(new GUIContent("Language screenshots/" + item), Project.Singleton.DataToSendSelectedItems.Contains(item), OnColorSelected, item);
                     }
                 }
             }
@@ -338,11 +333,11 @@ namespace Gridly.Internal
             if (GUILayout.Button(new GUIContent() { text = "Push data", tooltip = "Push source strings and screenshots with selected languages to Grdily" }))
             {
                 string msg = "You are going to push data with these settings:\n";
-                foreach (string data in Project.singleton.DataToSendSelectedItems)
+                foreach (string data in Project.Singleton.DataToSendSelectedItems)
                 {
                     if (data.Length == 4)
                     {
-                        if (!Project.singleton.DataToSendSelectedItems.Contains("All target language screenshots"))
+                        if (!Project.Singleton.DataToSendSelectedItems.Contains("All target language screenshots"))
                             msg += "- " + data + " screenshots" + "\n";
                     }
                     else
@@ -352,7 +347,7 @@ namespace Gridly.Internal
                 }
                 if (EditorUtility.DisplayDialog("Push data to Gridly", msg, "OK", "Cancel"))
                 {
-                    GridlyFunctionEditor.editor.AddUpdateRecordAll(popupData.grid.records, popupData.grid.choesenViewID, false, true);
+                    GridlyFunctionEditor.editor.AddUpdateRecordAll(popupData.Grid.records, popupData.Grid.choesenViewID, false, true);
                 }
             }
 
@@ -360,9 +355,9 @@ namespace Gridly.Internal
             GUILayout.BeginHorizontal();
             EditorGUI.BeginChangeCheck();
             GUILayout.FlexibleSpace();
-            Project.singleton.SendIfChanged = GUILayout.Toggle(Project.singleton.SendIfChanged, new GUIContent { text = "Push only changed records", tooltip = "Send records that has been changed in Unity to Gridly." });
+            Project.Singleton.SendIfChanged = GUILayout.Toggle(Project.Singleton.SendIfChanged, new GUIContent { text = "Push only changed records", tooltip = "Send records that has been changed in Unity to Gridly." });
             if (EditorGUI.EndChangeCheck())
-                Project.singleton.setDirty();
+                EditorUtility.SetDirty(Project.Singleton);
             GUILayout.EndHorizontal();
 
 
@@ -374,20 +369,20 @@ namespace Gridly.Internal
         {
             string selectedText = selectedDataItem.ToString();
 
-            if (selectedText.Length == 4 && Project.singleton.DataToSendSelectedItems.Contains("All target language screenshots"))
+            if (selectedText.Length == 4 && Project.Singleton.DataToSendSelectedItems.Contains("All target language screenshots"))
             {
-                Project.singleton.DataToSendSelectedItems.Remove("All target language screenshots");
+                Project.Singleton.DataToSendSelectedItems.Remove("All target language screenshots");
             }
 
             if (selectedText == "All target language screenshots")
             {
                 bool allLangAdded = true;
-                foreach (LangSupport lang in Project.singleton.langSupports)
+                foreach (LangSupport lang in Project.Singleton.langSupports)
                 {
 
-                    if (lang.name != UserData.singleton.mainLangEditor.ToString())
+                    if (lang.name != UserData.Singleton.mainLangEditor.ToString())
                     {
-                        if (!Project.singleton.DataToSendSelectedItems.Contains(lang.name))
+                        if (!Project.Singleton.DataToSendSelectedItems.Contains(lang.name))
                         {
                             allLangAdded = false;
                         }
@@ -396,24 +391,24 @@ namespace Gridly.Internal
 
                 if (allLangAdded)
                 {
-                    foreach (LangSupport lang in Project.singleton.langSupports)
+                    foreach (LangSupport lang in Project.Singleton.langSupports)
                     {
-                        if (Project.singleton.DataToSendSelectedItems.Contains(lang.name))
+                        if (Project.Singleton.DataToSendSelectedItems.Contains(lang.name))
                         {
-                            Project.singleton.DataToSendSelectedItems.Remove(lang.name);
+                            Project.Singleton.DataToSendSelectedItems.Remove(lang.name);
                         }
                     }
 
                 }
                 else
                 {
-                    foreach (LangSupport lang in Project.singleton.langSupports)
+                    foreach (LangSupport lang in Project.Singleton.langSupports)
                     {
-                        if (lang.name != UserData.singleton.mainLangEditor.ToString())
+                        if (lang.name != UserData.Singleton.mainLangEditor.ToString())
                         {
-                            if (!Project.singleton.DataToSendSelectedItems.Contains(lang.name))
+                            if (!Project.Singleton.DataToSendSelectedItems.Contains(lang.name))
                             {
-                                Project.singleton.DataToSendSelectedItems.Add(lang.name);
+                                Project.Singleton.DataToSendSelectedItems.Add(lang.name);
                             }
                         }
                     }
@@ -421,23 +416,23 @@ namespace Gridly.Internal
 
             }
 
-            Debug.Log(selectedText);
+            GridlyLogging.Log(selectedText);
 
-            if (Project.singleton.DataToSendSelectedItems.Contains(selectedText))
+            if (Project.Singleton.DataToSendSelectedItems.Contains(selectedText))
             {
-                Project.singleton.DataToSendSelectedItems.Remove(selectedText);
+                Project.Singleton.DataToSendSelectedItems.Remove(selectedText);
             }
             else
             {
-                Project.singleton.DataToSendSelectedItems.Add(selectedText);
+                Project.Singleton.DataToSendSelectedItems.Add(selectedText);
             }
 
-            if (!Project.singleton.DataToSendSelectedItems.Where(d => d.Contains("Source")).Any())
+            if (!Project.Singleton.DataToSendSelectedItems.Where(d => d.Contains("Source")).Any())
             {
-                Project.singleton.DataToSendSelectedItems.Remove(UserData.singleton.mainLangEditor.ToString());
+                Project.Singleton.DataToSendSelectedItems.Remove(UserData.Singleton.mainLangEditor.ToString());
             }
 
-            Project.singleton.setDirty();
+            EditorUtility.SetDirty(Project.Singleton);
 
         }
         void DrawAddRecord()
@@ -465,15 +460,15 @@ namespace Gridly.Internal
 
                     Record record = new Record();
                     record.recordID = nameNewKey;
-                    GridlyFunctionEditor.editor.AddRecord(record, grid.choesenViewID);
+                    GridlyFunctionEditor.editor.AddRecord(record, Grid.choesenViewID);
 
-                    foreach (var i in Project.singleton.langSupports)
+                    foreach (var i in Project.Singleton.langSupports)
                     {
-                        record.columns.Add(new Column(i.languagesSuport.ToString(), ""));
+                        record.columns.Add(new Column(i.languagesSupport.ToString(), ""));
                     }
 
-                    grid.records.Add(record);
-                    Project.singleton.setDirty();
+                    Grid.records.Add(record);
+                    EditorUtility.SetDirty(Project.Singleton);
 
                     showCreateKey = false;
                     selectRecordID = nameNewKey;
@@ -531,7 +526,7 @@ namespace Gridly.Internal
 
             foreach (var i in record.columns)
             {
-                if (i.columnID == UserData.singleton.mainLangEditor.ToString())
+                if (i.columnID == UserData.Singleton.mainLangEditor.ToString())
                     return LimitText(ref i.text);
             }
             return string.Empty;
@@ -569,20 +564,16 @@ namespace Gridly.Internal
             if (EditorGUI.EndChangeCheck())
             {
                 record.pathTag = pathSelect;
-                //Refesh();
                 return;
             }
-            //Debug.Log(record.pathTag);
-            foreach (var i in Project.singleton.langSupports)
+            foreach (var i in Project.Singleton.langSupports)
             {
-
                 //IDE
-
                 GUILayout.BeginHorizontal(TextStyle);
                 string name = i.name;
 
                 GUIContent contenLabel;
-                if (i.languagesSuport == UserData.singleton.mainLangEditor)
+                if (i.languagesSupport == UserData.Singleton.mainLangEditor)
                 {
                     name = "*" + name;
                     contenLabel = new GUIContent() { text = name, tooltip = "This is the source language" };
@@ -596,7 +587,7 @@ namespace Gridly.Internal
                 float widthNameLang = 70 + (position.width - 400) * 0.1f;
                 GUILayout.Label(contenLabel, EditorStyles.boldLabel, GUILayout.Width(widthNameLang));
 
-                Column col = record.columns.Find(x => x.columnID == i.languagesSuport.ToString());
+                Column col = record.columns.Find(x => x.columnID == i.languagesSupport.ToString());
                 string text = "";
                 if (col != null)
                     text = col.text;
@@ -611,17 +602,17 @@ namespace Gridly.Internal
                     if (col != null)
                     {
                         col.text = text;
-                        Project.singleton.setDirty();
+                        EditorUtility.SetDirty(Project.Singleton);
                     }
                     else
                     {
-                        Debug.Log("you cannot edit this field because there is no column " + i.languagesSuport + " on Gridly. To fix this please login to Gridly and add column with columnID as \"" + i.languagesSuport + "\"");
+                        GridlyLogging.Log($"you cannot edit this field because there is no column {i.languagesSupport} on Gridly. To fix this please login to Gridly and add column with columnID as \"{i.languagesSupport}\"");
                     }
                 }
 
                 if (GUILayout.Button(new GUIContent() { text = "Export", tooltip = "Export this field to Gridly" }, GUILayout.Width(60)))
                 {
-                    GridlyFunctionEditor.editor.UpdateRecordLang(record, grid.choesenViewID, i.languagesSuport);
+                    GridlyFunctionEditor.editor.UpdateRecordLang(record, Grid.choesenViewID, i.languagesSupport);
                 }
 
                 GUILayout.EndHorizontal();
@@ -643,10 +634,10 @@ namespace Gridly.Internal
                     if (GUILayout.Button("Save", GUILayout.Width(50)))
                     {
                         selectRecordID = theNameToRename;
-                        GridlyFunctionEditor.editor.DeleteRecord(record.recordID, grid.choesenViewID, null); //delete old record before rename
+                        GridlyFunctionEditor.editor.DeleteRecord(record.recordID, Grid.choesenViewID, null); //delete old record before rename
                         record.recordID = theNameToRename;
-                        GridlyFunctionEditor.editor.AddRecord(record, grid.choesenViewID);
-                        Project.singleton.setDirty();
+                        GridlyFunctionEditor.editor.AddRecord(record, Grid.choesenViewID);
+                        EditorUtility.SetDirty(Project.Singleton);
                     }
 
                     GUILayout.EndHorizontal();
@@ -659,13 +650,12 @@ namespace Gridly.Internal
             {
                 if (EditorUtility.DisplayDialog("Confirm delete", "Are you sure you want to delete this record", "Yes", "Cancel"))
                 {
-                    EditorUtility.SetDirty(UserData.singleton);
-                    GridlyFunctionEditor.editor.DeleteRecord(record.recordID, grid.choesenViewID, null);
-                    grid.records.Remove(record);
+                    EditorUtility.SetDirty(UserData.Singleton);
+                    GridlyFunctionEditor.editor.DeleteRecord(record.recordID, Grid.choesenViewID, null);
+                    Grid.records.Remove(record);
                     Refesh();
-                    Project.singleton.setDirty();
+                    EditorUtility.SetDirty(Project.Singleton);
                 }
-
             }
 
 
@@ -673,22 +663,12 @@ namespace Gridly.Internal
             {
                 isRename = !isRename;
             }
-
-            /*
-            if (GUILayout.Button("Update"))
-            {
-                GridlyFunctionEditor.editor.AddRecord(record, grid.choesenViewID);
-            }
-            */
-
             GUILayout.EndHorizontal();
+            
             #endregion
-
-            //YPos = GUILayoutUtility.GetLastRect().y;
-            //Debug.Log(GUILayoutUtility.GetLastRect().y);
+            
             GUILayout.Space(mRowSize);
         }
     }
-
 
 }

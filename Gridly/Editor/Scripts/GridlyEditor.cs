@@ -122,7 +122,7 @@ namespace Gridly.Internal
         {
             if (EditorUtility.DisplayDialog("Confirm Export", "Are you sure you want to export everything to Gridly?. It will overwrite the old data including translations.", "Yes", "Cancel"))
             {
-                foreach (var i in Project.singleton.grids)
+                foreach (var i in Project.Singleton.grids)
                 {
                     viewID = i.choesenViewID;
                     GridlyFunctionEditor.editor.AddUpdateRecordAll(i.records, viewID, true, false);
@@ -145,7 +145,7 @@ namespace Gridly.Internal
             List<string> columns = new List<string>();
 
 
-            foreach (var i in Project.singleton.grids)
+            foreach (var i in Project.Singleton.grids)
             {
                 viewID = i.choesenViewID;
 
@@ -158,10 +158,10 @@ namespace Gridly.Internal
 
 
 
-                Assets.Gridly.Internal.Scripts.GirldyView.View gridlyView = JsonConvert.DeserializeObject<Assets.Gridly.Internal.Scripts.GirldyView.View>(gridlyResponse);
+                Assets.Gridly.Internal.Scripts.GridlyView.View gridlyView = JsonConvert.DeserializeObject<Assets.Gridly.Internal.Scripts.GridlyView.View>(gridlyResponse);
 
 
-                foreach (Assets.Gridly.Internal.Scripts.GirldyView.Column column in gridlyView.columns)
+                foreach (Assets.Gridly.Internal.Scripts.GridlyView.Column column in gridlyView.columns)
                 {
                     if (column.type != null)
                     {
@@ -201,61 +201,53 @@ namespace Gridly.Internal
             GUILayout.Space(10);
 
             if (mCurrentViewMode == eViewMode.Setting)
+            {
                 SettingWin();
+            }
             else if (mCurrentViewMode == eViewMode.Languages)
             {
-                if (Project.singleton.grids == null)
+                if (Project.Singleton.grids == null)
                 {
-                    Debug.LogError("You don't have any grids added to your project.");
-                    return;
+                    GridlyLogging.LogError("You don't have any grids added to your project.");
                 }
                 else
                 {
                     LanguageWin();
                 }
-
             }
-
         }
-
-
-
-        void SettingWin()
+        
+        private void SettingWin()
         {
-
-
-
             GUILayout.Label("Enter your API key here:", EditorStyles.boldLabel);
 
             EditorGUI.BeginChangeCheck();
-            string _APIkey = EditorGUILayout.PasswordField(UserData.singleton.keyAPI);
+            string _APIkey = EditorGUILayout.PasswordField(UserData.Singleton.KeyAPI);
             if (EditorGUI.EndChangeCheck())
             {
-                UserData.singleton.keyAPI = _APIkey;
-                UserData.singleton.setDirty();
+                UserData.Singleton.KeyAPI = _APIkey;
+                EditorUtility.SetDirty(UserData.Singleton);
 
             }
 
             GUILayout.Label("Enter screenshots root folder here:", EditorStyles.boldLabel);
 
             EditorGUI.BeginChangeCheck();
-            string screenshotPath = EditorGUILayout.TextField(UserData.singleton.screenshotPath);
+            string screenshotPath = EditorGUILayout.TextField(UserData.Singleton.ScreenshotPath);
             if (EditorGUI.EndChangeCheck())
             {
-                UserData.singleton.screenshotPath = screenshotPath;
-                UserData.singleton.setDirty();
+                UserData.Singleton.ScreenshotPath = screenshotPath;
+                EditorUtility.SetDirty(UserData.Singleton);
             }
-
-
-
-
+            
+            
             #region viewID
             GUILayout.Space(10);
             GUILayout.Label("Enter your ViewID here:", EditorStyles.boldLabel);
             m_Scroll = GUILayout.BeginScrollView(m_Scroll, TextStyle, GUILayout.Height(150));
 
             Grid removeGrid = null;
-            foreach (var i in Project.singleton.grids)
+            foreach (var i in Project.Singleton.grids)
             {
                 EditorGUI.BeginChangeCheck();
                 GUILayout.BeginHorizontal();
@@ -272,21 +264,20 @@ namespace Gridly.Internal
 
                 if (EditorGUI.EndChangeCheck())
                 {
-                    Project.singleton.setDirty();
+                    EditorUtility.SetDirty(Project.Singleton);
                     InitWindow();
                 }
             }
 
-            if (removeGrid != null) Project.singleton.grids.Remove(removeGrid);
+            if (removeGrid != null) Project.Singleton.grids.Remove(removeGrid);
 
 
             #region add new grid "+"
 
             if (GUILayout.Button("+", EditorStyles.toolbarButton, GUILayout.Width(30)))
             {
-                Project.singleton.grids.Add(new Grid());
+                Project.Singleton.grids.Add(new Grid());
             }
-
 
             GUILayout.EndScrollView();
             #endregion
@@ -294,26 +285,23 @@ namespace Gridly.Internal
 
             #endregion
 
-
-
             GUILayout.Space(10);
             EditorGUI.BeginChangeCheck();
-            UserData.singleton.showServerMess = GUILayout.Toggle(UserData.singleton.showServerMess, "Print server messages to the console");
+            UserData.Singleton.showServerMess = GUILayout.Toggle(UserData.Singleton.showServerMess, "Print server messages to the console");
             if (EditorGUI.EndChangeCheck())
-                UserData.singleton.setDirty();
+                EditorUtility.SetDirty(UserData.Singleton);
 
             GUILayout.Space(10);
-            if (GridlyFunctionEditor.isDowloading)
+            if (GridlyFunctionEditor.IsDownloading)
             {
                 GUILayout.BeginHorizontal();
                 GUILayout.Label("Dowloading...");
                 if (GUILayout.Button("Cancel", GUILayout.Width(50)))
                 {
-                    GridlyFunctionEditor.editor.RefeshDowloadTotal();
+                    GridlyFunctionEditor.editor.RefreshDownloadTotal();
                     EditorApplication.update = null;
                 }
                 GUILayout.EndHorizontal();
-
             }
 
             //setup
@@ -321,7 +309,6 @@ namespace Gridly.Internal
             EditorGUILayout.HelpBox("Download and setup all data", MessageType.Info);
             if (GUILayout.Button(new GUIContent() { text = "Import All", tooltip = "Download all data from Gridly" }))
             {
-
                 GridlyFunctionEditor.editor.doneOneProcess += TermEditor.Refesh;
                 GridlyFunctionEditor.editor.doneOneProcess += TermEditor.RepaintThis;
 
@@ -338,25 +325,20 @@ namespace Gridly.Internal
                         TermEditor.window.Close();
                     }
                     catch { }
-                    Project.singleton.grids = new List<Grid>();
-                    Project.singleton.Save();
+                    Project.Singleton.grids = new List<Grid>();
+                    Project.Singleton.Save();
                 }
             }
-
         }
 
         async void LanguageWin()
         {
-
-
-
-
             int deleteIndex = -1;
             #region list Lang
             m_Scroll = GUILayout.BeginScrollView(m_Scroll, TextStyle, GUILayout.MinHeight(300), GUILayout.ExpandHeight(false));
             if (listGridlyColumnIds != null)
             {
-                SerializedObject serializedObject = new SerializedObject(Project.singleton);
+                SerializedObject serializedObject = new SerializedObject(Project.Singleton);
                 SerializedProperty property = serializedObject.FindProperty("langSupports");
                 int selectedIndex = 0;
                 string columnIdSelect = "";
@@ -366,15 +348,13 @@ namespace Gridly.Internal
                 for (int i = 0; i < property.arraySize; i++)
                 {
                     GUILayout.Space(2);
-                    LangSupport langSupport = Project.singleton.langSupports[i];
+                    LangSupport langSupport = Project.Singleton.langSupports[i];
                     GUILayout.BeginHorizontal();
-
 
                     if (GUILayout.Button("X", "toolbarbutton"))
                     {
                         deleteIndex = i;
                     }
-
 
                     EditorGUI.BeginChangeCheck();
                     string name = langSupport.name;
@@ -387,20 +367,18 @@ namespace Gridly.Internal
                         TermEditor.RepaintThis();
                         if (TermEditor.window != null)
                             TermEditor.window.OnGUI();
-                        UserData.singleton.mainLangEditor = langSupport.languagesSuport;
-                        UserData.singleton.setDirty();
+                        UserData.Singleton.mainLangEditor = langSupport.languagesSupport;
+                        EditorUtility.SetDirty(UserData.Singleton);
                     }
 
-                    langSupport.languagesSuport = (Languages)EditorGUILayout.EnumPopup("Select Langauge", langSupport.languagesSuport);
+                    langSupport.languagesSupport = (Languages)EditorGUILayout.EnumPopup("Select Langauge", langSupport.languagesSupport);
 
                     if (EditorGUI.EndChangeCheck() && !string.IsNullOrEmpty(name))
                     {
                         langSupport.name = listGridlyColumnIds[selectedIndexOfColumn];
-                        Project.singleton.setDirty();
+                        EditorUtility.SetDirty(Project.Singleton);
                     }
                     GUILayout.EndHorizontal();
-
-
 
 
                     //font
@@ -435,30 +413,26 @@ namespace Gridly.Internal
                     if (GUILayout.Button(new GUIContent() { text = "Generate column", tooltip = "Generate column for screenshot" }))
                     {
                         viewID = "";
-                        foreach (var view in Project.singleton.grids)
+                        foreach (var view in Project.Singleton.grids)
                         {
                             viewID = view.choesenViewID;
                         }
 
 
                         await GridlyFunctionEditor.createGridlyColumn(viewID, langSupport.name, "files", false, false);
-                        Project.singleton.setDirty();
+                        EditorUtility.SetDirty(Project.Singleton);
                         window.Close();
                         InitWindow();
-
-
                     }
+                    
                     if (EditorGUI.EndChangeCheck())
                     {
                         langSupport.screenshotColumnId = columnIdSelect;
-                        //Refesh();
-                        Project.singleton.setDirty();
+                        EditorUtility.SetDirty(Project.Singleton);
                         return;
                     }
 
                     GUILayout.EndHorizontal();
-
-
                     GUILayout.Space(15);
                 }
 
@@ -470,14 +444,11 @@ namespace Gridly.Internal
                 {
                     if (deleteIndex != -1)
                     {
-
                         if (EditorUtility.DisplayDialog("Confirm delete", "Are you sure you want to delete the selected language", "Yes", "Cancel"))
                         {
-
-
-                            Languages langDelete = Project.singleton.langSupports[deleteIndex].languagesSuport;
-                            idToDelete = Project.singleton.langSupports[deleteIndex].name;
-                            foreach (var grid in Project.singleton.grids)
+                            Languages langDelete = Project.Singleton.langSupports[deleteIndex].languagesSupport;
+                            idToDelete = Project.Singleton.langSupports[deleteIndex].name;
+                            foreach (var grid in Project.Singleton.grids)
                             {
                                 foreach (var i in grid.records)
                                 {
@@ -485,18 +456,14 @@ namespace Gridly.Internal
                                 }
                             }
 
-                            Project.singleton.langSupports.RemoveAt(deleteIndex);
-                            Project.singleton.setDirty();
-
-
-
+                            Project.Singleton.langSupports.RemoveAt(deleteIndex);
+                            EditorUtility.SetDirty(Project.Singleton);
                         }
                         if (EditorUtility.DisplayDialog("Confirm delete column from Gridly", "Are you sure you want to delete the selected column from Gridly", "Yes", "Cancel"))
                         {
                             await GridlyFunctionEditor.deleteGridlyColumn(viewID, idToDelete);
                             await GridlyFunctionEditor.deleteGridlyColumn(viewID, idToDelete + "_Screenshot");
                         }
-
                     }
                 }
             }
@@ -517,21 +484,21 @@ namespace Gridly.Internal
                 Languages language = (Languages)System.Enum.Parse(typeof(Languages), final[selectLang]);
                 if (listGridlyColumnIds.Length > 0)
                 {
-                    //a void duplicate
-                    foreach (var i in Project.singleton.langSupports)
-                        if (i.languagesSuport == language)
+                    // avoid duplicate
+                    foreach (var i in Project.Singleton.langSupports)
+                        if (i.languagesSupport == language)
                             return;
                 }
 
-                var langSup = new LangSupport() { name = language.ToString(), languagesSuport = language };
-                Project.singleton.langSupports.Add(langSup);
+                var langSup = new LangSupport() { name = language.ToString(), languagesSupport = language };
+                Project.Singleton.langSupports.Add(langSup);
 
                 //try add pre-font
                 try
                 {
-                    int count = Project.singleton.langSupports.Count;
-                    langSup.font = Project.singleton.langSupports[count - 2].font;
-                    langSup.tmFont = Project.singleton.langSupports[count - 2].tmFont;
+                    int count = Project.Singleton.langSupports.Count;
+                    langSup.font = Project.Singleton.langSupports[count - 2].font;
+                    langSup.tmFont = Project.Singleton.langSupports[count - 2].tmFont;
                     await GridlyFunctionEditor.createGridlyColumn(viewID, langSup.name, "language", true, false);
                     await GridlyFunctionEditor.SetDependency(langSup.name, viewID);
                     window.Close();
@@ -542,14 +509,11 @@ namespace Gridly.Internal
 
                 }
 
-                Project.singleton.setDirty();
+                EditorUtility.SetDirty(Project.Singleton);
             }
             GUILayout.EndHorizontal();
             #endregion
-
         }
-
-
     }
 
 }

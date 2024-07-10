@@ -1,144 +1,69 @@
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using System.Linq;
+
 namespace Gridly.Internal
 {
-    public class ArrData
-    {
-
-        bool _init;
-        public bool init => _init;
-        public List<List<string>> numberList = new List<List<string>>();
-        public int chosenIndexList = 0;
-        public ArrData(int numberOfArr)
-        {
-            for (int i = 0; i < numberOfArr; i++)
-            {
-                numberList.Add(new List<string>());
-            }
-            
-        }
-
-        public string[] ToArr(int index)
-        {
-            return numberList[index].ToArray();
-        }
-
-
-    }
-        
     public class GridlyArrData
     {
-        bool _init;
-        public bool init => _init;
+        public bool IsInitialized { get; private set; }
 
         public string[] gridArr;
         public string[] keyArr;
-
-
         public int indexGrid;
         public int indexKey;
         public string keyID;
         public string searchKey;
-        public string chosenGridName => gridArr[indexGrid];
+        
 
+        public Grid Grid => Project.Singleton.GetGridByIndex(indexGrid);
+        public Record ChosenRecord => Grid?.FindRecord(keyID);
+        
 
-
-        public void RefeshAll(string gridname, string keyID) 
+        public void RefreshAll(string gridName, string keyID) 
         {
-            _init = true;
+            IsInitialized = true;
 
             this.keyID = keyID;
-            List<string> nameGrid = new List<string>();
-            foreach (var i in Project.singleton.grids)
+
+            gridArr = Project.Singleton.grids
+                .Select(x => x.nameGrid)
+                .ToArray();
+            
+            if (!string.IsNullOrEmpty(gridName))
             {
-                nameGrid.Add(i.nameGrid);
-            }
-            if(nameGrid.Count > 0)
-                gridArr = nameGrid.ToArray();
-            if (!string.IsNullOrEmpty(gridname))
-            {
-                
-                indexGrid = GetIndex(gridname, gridArr);
+                indexGrid = GetIndex(gridName, gridArr);
             }
 
-          
-
-            if(grid != null)
+            if (Grid == null) return;
+            
+            List<string> nameKey = new List<string>();
+            foreach(var record in Grid.records)
             {
-                List<string> nameKey = new List<string>();
-                foreach(var i in grid.records)
-                {
-                    nameKey.Add(i.recordID);
-                }
-
-                if (!string.IsNullOrEmpty(searchKey))
-                {
-                    nameKey = nameKey.FindAll(x => x.Contains(searchKey));
-                }
-
-
-                keyArr = nameKey.ToArray();
-
-                if (!string.IsNullOrEmpty(keyID))
-                    indexKey = GetIndex(keyID, keyArr);
-                
+                nameKey.Add(record.recordID);
             }
 
+            if (!string.IsNullOrEmpty(searchKey))
+            {
+                nameKey = nameKey.FindAll(x => x.Contains(searchKey));
+            }
 
+            keyArr = nameKey.ToArray();
+
+            if (!string.IsNullOrEmpty(keyID))
+                indexKey = GetIndex(keyID, keyArr);
         }
        
-        int GetIndex(string select, string[] arr)
+        private static int GetIndex(string select, params string[] arr)
         {
             if (arr == null)
                 return -1;
-            int index = 0;
-            foreach (var i in arr)
+            
+            for (var i = 0; i < arr.Length; i++)
             {
-                if (select == i)
-                    return index;
-                index += 1;
+                if (arr[i] == select)
+                    return i;
             }
             return 0;
-        }
-
-
-
-
-        public Grid grid
-        {
-            get
-            {
-                try
-                {
-                    return Project.singleton
-                        .grids[indexGrid];
-                }
-                catch
-                {
-                    return null;
-                }
-            }
-            
-        }
-
-
-        public Record chosenRecord
-        {
-            get
-            {
-                try
-                {
-                    return grid.records.Find(x => x.recordID == keyID);
-                        
-                }
-                catch
-                {
-                    return null;
-                }
-            }
-
         }
     }
 

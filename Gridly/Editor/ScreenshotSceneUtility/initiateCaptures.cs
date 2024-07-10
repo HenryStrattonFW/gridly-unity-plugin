@@ -26,30 +26,29 @@ public class initiateCaptures : MonoBehaviour
 
     LangSupport currentLanguage
     {
-        get => Project.singleton.targetLanguage;
-        set => Project.singleton.targetLanguage = value;
+        get => Project.Singleton.TargetLanguage;
+        set => Project.Singleton.TargetLanguage = value;
     }
 
-    public static List<LangSupport> languagesSupport => Project.singleton.langSupports;
+    public static List<LangSupport> languagesSupport => Project.Singleton.langSupports;
 
     void Awake()
     {
 
         DontDestroyOnLoad(transform.gameObject);
-        screenshotPath = UserData.singleton.screenshotPath.ToString();
+        screenshotPath = UserData.Singleton.ScreenshotPath.ToString();
 
 
     }
 
     IEnumerator Start()
     {
-
-        Debug.Log("Loaded Lang: " + Project.singleton.targetLanguage.name);
+        GridlyLogging.Log($"Loaded Lang: {Project.Singleton.TargetLanguage.name}");
 
         foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
         {
 
-            foreach (string lang in Project.singleton.LangsToTakeScreenshotList)
+            foreach (string lang in Project.Singleton.LangsToTakeScreenshotList)
             {
                 NextLanguage(lang);
 
@@ -63,7 +62,7 @@ public class initiateCaptures : MonoBehaviour
                 }
 
 
-                takeScreenshot(Project.singleton.targetLanguage.name);
+                takeScreenshot(Project.Singleton.TargetLanguage.name);
                 yield return new WaitForSeconds((float)1);
 
 
@@ -111,12 +110,12 @@ public class initiateCaptures : MonoBehaviour
         return names;
     }
 
-    void Refesh()
+    private void Refresh()
     {
-        TranslareText[] translareText = FindObjectsOfType<Translator>();
+        Translator[] translareText = FindObjectsOfType<Translator>();
         foreach (var i in translareText)
         {
-            i.Refesh();
+            i.Refresh();
         }
 
     }
@@ -127,7 +126,7 @@ public class initiateCaptures : MonoBehaviour
             index = 0;
 
         currentLanguage = languagesSupport.Where(ls => ls.name == lang).FirstOrDefault();
-        Refesh();
+        Refresh();
 
 
     }
@@ -155,9 +154,9 @@ public class LookAtPointEditor : Editor
     {
         List<string> langs = new List<string>();
 
-        foreach (LangSupport lang in Project.singleton.langSupports)
+        foreach (LangSupport lang in Project.Singleton.langSupports)
         {
-            if (!Project.singleton.LangsToTakeScreenshotList.Contains(lang.name))
+            if (!Project.Singleton.LangsToTakeScreenshotList.Contains(lang.name))
             {
                 langs.Add(lang.name);
             }
@@ -166,25 +165,25 @@ public class LookAtPointEditor : Editor
         serializedObject.Update();
         EditorGUILayout.PropertyField(WaitBetweenScenes);
         EditorGUILayout.BeginHorizontal();
-        Project.singleton.LastSelectedLangIndexToAdd = EditorGUILayout.Popup(Project.singleton.LastSelectedLangIndexToAdd, langs.ToArray());
+        Project.Singleton.LastSelectedLangIndexToAdd = EditorGUILayout.Popup(Project.Singleton.LastSelectedLangIndexToAdd, langs.ToArray());
         if (GUILayout.Button("Add", GUILayout.MinWidth(100), GUILayout.MaxWidth(200)))
         {
-            Project.singleton.LangsToTakeScreenshotList.Add(langs[Project.singleton.LastSelectedLangIndexToAdd]);
+            Project.Singleton.LangsToTakeScreenshotList.Add(langs[Project.Singleton.LastSelectedLangIndexToAdd]);
         }
         EditorGUILayout.EndHorizontal();
 
         EditorGUILayout.BeginHorizontal();
-        Project.singleton.LastSelectedLangIndexToRemove = EditorGUILayout.Popup(Project.singleton.LastSelectedLangIndexToRemove, Project.singleton.LangsToTakeScreenshotList.ToArray());
+        Project.Singleton.LastSelectedLangIndexToRemove = EditorGUILayout.Popup(Project.Singleton.LastSelectedLangIndexToRemove, Project.Singleton.LangsToTakeScreenshotList.ToArray());
         if (GUILayout.Button("Remove", GUILayout.MinWidth(100), GUILayout.MaxWidth(200)))
         {
-            Project.singleton.LangsToTakeScreenshotList.Remove(Project.singleton.LangsToTakeScreenshotList[Project.singleton.LastSelectedLangIndexToRemove]);
+            Project.Singleton.LangsToTakeScreenshotList.Remove(Project.Singleton.LangsToTakeScreenshotList[Project.Singleton.LastSelectedLangIndexToRemove]);
         }
         EditorGUILayout.EndHorizontal();
 
 
 
         EditorGUILayout.LabelField("Added languages");
-        foreach (string lang in Project.singleton.LangsToTakeScreenshotList)
+        foreach (string lang in Project.Singleton.LangsToTakeScreenshotList)
         {
             EditorGUILayout.LabelField(lang);
         }

@@ -1,25 +1,18 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using UnityEditor;
-namespace Gridly.Internal{ 
-    public enum ColorDebug 
-    {
-        green,
-        red,
-        purple,
-        yellow
-    }
+
+namespace Gridly.Internal
+{
     public static class GridlyUtilityEditor
     {
-
-
-
-        public static void Error(this object i)
+        public static GUIStyle SearchTextStyle 
         {
-            Debug.LogError(i);
+#if UNITY_2022_3_OR_NEWER
+            get => GUI.skin.GetStyle("ToolbarSearchTextField");
+#else
+            get => GUI.skin.GetStyle("ToolbarSeachTextField");
+#endif
         }
-
 
         public static void Save(this Object i)
         {
@@ -27,12 +20,10 @@ namespace Gridly.Internal{
             AssetDatabase.SaveAssets();
         }
 
-        public static void setDirty(this Object i)
+        public static void SetDirty(this Object i)
         {
             EditorUtility.SetDirty(i);
         }
-
-        
     }
 
 }

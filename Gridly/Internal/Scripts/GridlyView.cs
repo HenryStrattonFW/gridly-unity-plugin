@@ -1,12 +1,10 @@
 ﻿using System.Collections.Generic;
-using UnityEngine;
 
 namespace Assets.Gridly.Internal.Scripts
 {
     [System.Serializable]
-    public class GirldyView
+    public class GridlyView
     {
-
         public class Column
         {
             public string id { get; set; }

@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using System;
 using Gridly.Internal;
@@ -158,47 +156,35 @@ namespace Gridly
 
     public static class GridlyLocal
     {
-
-        static string[] name;
-
         /// <summary>
-        /// 
+        /// Attempts to get the localized value of a record based on the current target langauge.
         /// </summary>
-        /// <param name="grid"></param>
-        /// <param name="recordID"></param>
-        /// <returns>translated text with the current language</returns>
-        public static string GetStringData(string grid, string recordID)
+        /// <param name="gridName">ID of the grid to search in.</param>
+        /// <param name="recordID">ID of the record to retrieve.</param>
+        /// <returns>Translated text if found. Empty string otherwise.</returns>
+        public static string GetStringData(string gridName, string recordID)
         {
             try
             {
-                
-                Debug.Log("gridId: " + grid + " recordID: " + recordID);
-                /*
-                Debug.Log(Project.singleton.grids[0].nameGrid);
-                Debug.Log(Project.singleton.grids[0].records.Count);
-                */
-                Record record = Project.singleton
-                .grids.Find(x => x.nameGrid == grid)
-                .records.Find(x => x.recordID == recordID);
-
-                
+                GridlyLogging.Log($"gridId: {gridName} recordID: {recordID}");
+                var grid = Project.Singleton.GetGridByName(gridName);
+                var record = grid.records.Find(x => x.recordID == recordID);
 
                 foreach (var column in record.columns)
                 {
                     try
                     {
-                        //Debug.Log(Project.singleton.targetLanguage.languagesSuport.ToString());
-                        if (column.columnID == Project.singleton.targetLanguage.languagesSuport.ToString())
+                        if (column.columnID == Project.Singleton.TargetLanguage.languagesSupport.ToString())
                         {
                             return column.text;
                         }
                     }
-                    catch // try to return other language if cant found target language
+                    catch // try to return another language if we fail to find target language
                     {
-                        Debug.Log("cant found: " + recordID + " | code:" + Project.singleton.targetLanguage.languagesSuport.ToString());
-                        foreach(var i in Project.singleton.langSupports)
+                        GridlyLogging.Log($"cant find: {recordID} | code:{Project.Singleton.TargetLanguage.languagesSupport}");
+                        foreach(var lang in Project.Singleton.langSupports)
                         {
-                            if (column.columnID == i.languagesSuport.ToString())
+                            if (column.columnID == lang.languagesSupport.ToString())
                             {
                                 return column.text;
                             }
@@ -209,12 +195,10 @@ namespace Gridly
             }
             catch(Exception ex)
             {
-                Debug.Log("Path does not exist. Please make sure you entered the correct path format, and added data" + ex.Message);
+                GridlyLogging.Log($"Path does not exist. Please make sure you entered the correct path format, and added data{ex.Message}");
             }
 
             return "";
         }
-
     }
-
 }

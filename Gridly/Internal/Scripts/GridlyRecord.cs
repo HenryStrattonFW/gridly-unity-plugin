@@ -1,28 +1,23 @@
-using Newtonsoft.Json;
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 
 public class GridlyRecord 
 {
-    public class Cells
+    public class Cell
     {
-        public string columnId { get; set; }
-
+        public string ColumnId { get; set; }
         public string Value { get; set; }
-
-        public string? dependencyStatus { get; set; }
-
+        public string DependencyStatus { get; set; }
     }
+    
     public class Records
     {
-        public string id { get; set; }
-        public List<Cells> cells { get; set; }
-        public string path { get; set; }
+        public string Id { get; set; }
+        public List<Cell> Cells { get; }
+        public string Path { get; set; }
 
         public Records()
         {
-            cells = new List<Cells>();
+            Cells = new List<Cell>();
         }
 
     }

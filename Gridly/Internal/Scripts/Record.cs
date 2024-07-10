@@ -1,9 +1,7 @@
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
+
 namespace Gridly.Internal 
 {
-
     [System.Serializable]
     public class Record
     {
@@ -35,8 +33,4 @@ namespace Gridly.Internal
             this.text = text;
         }
     }
-
-
-
-
 }

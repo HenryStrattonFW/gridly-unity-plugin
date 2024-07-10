@@ -1,62 +1,48 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using Gridly;
 using UnityEngine.UI;
+
+
 namespace Gridly.Example
 {
     public class GridlyPluginExample : MonoBehaviour
     {
-        public static Text[] texts;
-        public Text codeText;
-
-        LangSupport currentLanguage
+        [SerializeField] private Text languageCodeLabel;
+        
+        private static LangSupport CurrentLanguage
         {
-            get => Project.singleton.targetLanguage;
-            set => Project.singleton.targetLanguage = value;
+            get => Project.Singleton.TargetLanguage;
+            set => Project.Singleton.TargetLanguage = value;
         }
 
-        List<LangSupport> languagesSupport => Project.singleton.langSupports;
+        private int index = 0;
+        private List<LangSupport> languagesSupport => Project.Singleton.langSupports;
 
         private void Start()
         {
-            Refesh();
+            Project.Singleton.OnLanguageChanged += RefreshLanguageDisplay;
+            RefreshLanguageDisplay();
         }
 
-        int index = 0;
         public void NextLanguage()
         {
-            index++;
-            if (index == languagesSupport.Count)
+            if (++index == languagesSupport.Count)
                 index = 0;
             
-            currentLanguage = languagesSupport[index];
-            Refesh();
-
-
+            CurrentLanguage = languagesSupport[index];
         }
-
 
         public void PreviousLanguage()
         {
-            index--;
-            if (index == -1)
+            if (--index == -1)
                 index = languagesSupport.Count-1;
 
-            currentLanguage = languagesSupport[index];
-
-            Refesh();
+            CurrentLanguage = languagesSupport[index];
         }
 
-        void Refesh()
+        private void RefreshLanguageDisplay()
         {
-            //codeText.text = currentLanguage.languagesSuport.ToString();
-            TranslareText[] translareText = FindObjectsOfType<Translator>();
-            foreach(var i in translareText)
-            {
-                i.Refesh();
-            }
-            
+            languageCodeLabel.text = CurrentLanguage.languagesSupport.ToString();
         }
 
     }

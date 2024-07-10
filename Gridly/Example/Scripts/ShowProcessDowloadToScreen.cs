@@ -15,11 +15,11 @@ public class ShowProcessDowloadToScreen : MonoBehaviour
     bool isFinish;
     public void Update()
     {
-        numberOfProces.text = sync.processDone + "/" + sync.processNumberTotal;
+        numberOfProces.text = SyncDataGridly.ProgressDone + "/" + SyncDataGridly.ProgressNumberTotal;
         if (!isFinish)
-            process.text = ((int)(sync.process * 100)).ToString() + "%";
+            process.text = ((int)(SyncDataGridly.Progress * 100)).ToString() + "%";
         else process.text = "Finish";
-        image.fillAmount = sync.process;
+        image.fillAmount = SyncDataGridly.Progress;
     }
 
     public void Finish()

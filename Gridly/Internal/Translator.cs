@@ -1,17 +1,10 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
 using UnityEngine.UI;
 
-using Gridly.Example;
 namespace Gridly
 {
-    public interface TranslareText
-    {
-        void Refesh();
-    }
-    public class Translator : MonoBehaviour, TranslareText
+    public class Translator : MonoBehaviour
     {
         public TextMeshProUGUI textMeshPro;
         public Text text;
@@ -21,32 +14,31 @@ namespace Gridly
 
         [HideInInspector]
         public string key;
-
-        
-
-        void OnEnable()
+     
+        private void OnEnable()
         {
-            Refesh();
-
+            Refresh();
+            Project.Singleton.OnLanguageChanged += Refresh;
         }
 
-        public void Refesh()
+        private void OnDisable()
+        {
+            Project.Singleton.OnLanguageChanged -= Refresh;
+        }
+
+        public void Refresh()
         {
             if (textMeshPro != null)
             {
                 textMeshPro.text = GridlyLocal.GetStringData(grid, key);
-                textMeshPro.font = Project.singleton.targetLanguage.tmFont;
+                textMeshPro.font = Project.Singleton.TargetLanguage.tmFont;
             }
 
             if (text != null)
             {
                 text.text = GridlyLocal.GetStringData(grid, key);
-                text.font = Project.singleton.targetLanguage.font;
+                text.font = Project.Singleton.TargetLanguage.font;
             }
-
-            if (text == null && textMeshPro == null) { }
-                //Debug.LogWarning("text,textMeshPro fields is empty " + gameObject.name);
-
         }
     }
 }

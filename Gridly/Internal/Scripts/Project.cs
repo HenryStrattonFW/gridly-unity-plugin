@@ -1,58 +1,52 @@
-using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using Gridly.Internal;
+using UnityEngine;
 using TMPro;
+using UnityEngine.Serialization;
+using Grid = Gridly.Internal.Grid;
+using LoggingMode = Gridly.Internal.GridlyLogging.LoggingMode;
+
 namespace Gridly
 {
-
     [System.Serializable]
     public class LangSupport
     {
-        public Languages languagesSuport;
+        [FormerlySerializedAs("languagesSuport")] 
+        public Languages languagesSupport;
         public string name;
         public string screenshotColumnId;
 
         public Font font;
         public TMP_FontAsset tmFont;
     }
-
-
-    //[CreateAssetMenu(fileName = "Project", menuName = "Gridly/Project", order = 1)]
-    public class Project : ScriptableObject
+    
+    public class Project : ScriptableSingleton<Project>
     {
-
-        static Project _singleton;
-        public string ProjectID;
-
-
         private string chosenLangCodeName;
-        public LangSupport targetLanguage
+        private Languages chosenLanguageCode;
+        
+        public LangSupport TargetLanguage
         {
-
-            set { chosenLangCodeName = value.languagesSuport.ToString(); }
+            set
+            {
+                SetChosenLanguageCode(value.languagesSupport);
+            }
             get
             {
-                LangSupport _ = langSupports.Find(x => x.languagesSuport.ToString() == chosenLangCodeName);
-                try
-                {
-
-                    if (_ == null)
-                    {
-                        //Debug.Log("Cant find the language: " + chosenLangCodeName);
-                        return langSupports[0];
-                    }
-                }
-                catch
-                {
-                    Debug.LogError("no supported language");
-                    return null;
-                }
-                return _;
+                if (languageLookup == null)
+                    CreateLookups();
+                
+                return languageLookup.TryGetValue(chosenLanguageCode, out var lang) 
+                    ? lang 
+                    : langSupports[0];
             }
         }
+
+        [SerializeField] private LoggingMode m_LoggingMode = LoggingMode.Verbose;
+        public LoggingMode LoggingMode => m_LoggingMode;
+        
         [HideInInspector]
-        public List<Gridly.Internal.Grid> grids;
+        public List<Grid> grids;
         //[HideInInspector]
         public List<LangSupport> langSupports;
         [HideInInspector]
@@ -68,70 +62,66 @@ namespace Gridly
         [HideInInspector]
         public bool SendIfChanged = false;
 
+        private Dictionary<string, Grid> gridLookup;
+        private Dictionary<Languages, LangSupport> languageLookup;
 
-        public Internal.Grid GetGrid(string name)
+        public event System.Action OnLanguageChanged;
+
+        private void CreateLookups()
         {
-            return grids.Find(x => x.nameGrid == name);
+            languageLookup = new Dictionary<Languages, LangSupport>();
+            foreach (var lang in langSupports)
+            {
+                languageLookup.Add(lang.languagesSupport, lang);
+            }
+
+            gridLookup = new Dictionary<string, Grid>();
+            foreach (var grid in grids)
+            {
+                gridLookup.Add(grid.nameGrid, grid);
+            }
         }
 
-        public static Project singleton
+        public Grid GetGridByName(string gridName)
+        {
+            if (gridLookup == null) CreateLookups();
+            
+            return gridLookup.TryGetValue(gridName, out var grid) 
+                ? grid 
+                : null;
+        }
+        
+        public Grid GetGridByIndex(int index)
+        {
+            if (index < 0 || index >= grids.Count) return null;
+            return grids[index];
+        }
+        
+        public int GetChosenLanguageIndex
         {
             get
             {
-                Init();
-                return _singleton;
-            }
-            set
-            {
-
-                try
+                for (var i = 0; i < langSupports.Count; i++)
                 {
-                    _singleton = value;
-                }
-                catch
-                {
-                    Init();
-                    _singleton = value;
-                }
-            }
-        }
-        static void Init()
-        {
-
-
-            if (_singleton == null)
-                _singleton = Resources.Load<Project>("Project");
-
-
-
-        }
-
-
-        public int getIndexChosenLang
-        {
-            get
-            {
-                int index = 0;
-                foreach (var i in langSupports)
-                {
-                    if (i.languagesSuport.ToString() == chosenLangCodeName)
-                        return index;
-                    index += 1;
+                    if (langSupports[i].languagesSupport == chosenLanguageCode)
+                        return i;
                 }
                 return 0;
             }
         }
-        void SetChosenLanguageCode(string langCode)
+
+        public void SetChosenLanguageCode(Languages language)
+        {
+            chosenLanguageCode = language;
+            chosenLangCodeName = language.ToString();
+            OnLanguageChanged?.Invoke();
+        }
+        
+        private void SetChosenLanguageCode(string langCode)
         {
             chosenLangCodeName = langCode;
-            TranslareText[] translareTexts = FindObjectsOfType<Translator>();
-            foreach (var i in translareTexts)
-                i.Refesh();
+            chosenLanguageCode = (Languages)System.Enum.Parse(typeof(Languages),chosenLangCodeName);
+            OnLanguageChanged?.Invoke();
         }
-        public void SetChosenLanguageCode(Languages languages)
-        {
-            SetChosenLanguageCode(languages.ToString());
-        }
-
     }
 }

@@ -1,66 +1,41 @@
 using UnityEngine.Networking;
 using System;
-using UnityEngine;
 using System.Threading.Tasks;
 
 namespace Gridly.Internal
 {
     public static class GridlyUtility
     {
-        public static void Print(this object i, string text)
-        {
-            Debug.Log(text + " " + "<b>" + i + "</b>");
-        }
-        public static void Print(this object i)
-        {
-            string output;
-            int length = i.ToString().Length;
-
-
-            output = i.ToString();
-
-
-            if (length > 600)
-            {
-                output = i.ToString().Substring(0, 600);
-                output += "...";
-            }
-            
-            Debug.Log("<b>" + output + "</b>");
-        }
-
         public static bool CheckOutput(this string output)
         {
+            if (output.Length != 0) return true;
 
-            if (output.Length == 0)
-            {
-                Debug.LogError("Something is wrong. Please check your key again");
-                //EditorApplication.update = null;
-
-                return false;
-            }
-
-            return true;
+            GridlyLogging.LogError("Something is wrong. Please check your key again");
+            return false;
         }
     }
 
     public class GridlyFunction
     {
+        private const int StepSize = 1000;
 
-        public static GridlyFunction s = new GridlyFunction();
-        static string gridlyDatatbasePath => "Assets/Gridly/Resources/Databases";
+
+        public static int Download { get; private set; }
+        public static int DownloadedTotal { get; private set; }
+        public static bool IsDownloading => Download < DownloadedTotal;
 
 
         #region Setup
+
         public void SetupDatabases()
         {
-            RefeshDowloadTotal();
+            RefreshDownloadTotal();
 
-            
-            foreach(var i in Project.singleton.grids)
+            foreach (var i in Project.Singleton.grids)
             {
                 if (i.choesenViewID == "###")
                     continue;
+
                 i.records.Clear(); //COMMENTED
                 SetupRecords(i, 0);
             }
@@ -68,131 +43,107 @@ namespace Gridly.Internal
 
         public static string GetRecordPage(string viewID, int i)
         {
-            int begin = (i * step);
-
-            Debug.Log("get record from " + (i * step) + " to: " + (i + 1) * step);
-            string _ = "https://api.gridly.com/v1/views/" + viewID + "/records?page=%7B%22offset%22%3A+" + begin.ToString() + "%2C+%22limit%22%3A+" + (step).ToString() + "%7D";
-
-            return _;
+            GridlyLogging.Log($"get record from {(i * StepSize)} to: {(i + 1) * StepSize}");
+            return $"https://api.gridly.com/v1/views/{viewID}/records?page=%7B%22offset%22%3A+{i * StepSize}%2C+%22limit%22%3A+{StepSize}%7D";
         }
-        static int step = 1000;
-
 
         public async void SetupRecords(Grid grid, int page)
         {
-            
-            int nprocess = 2; //download 2k record
-            for (int i = 0 + page; i < nprocess + page; i++)
+            int limit = 2 + page; //download 2k record
+            for (int i = 0 + page; i < limit; i++)
             {
-                await SetupRecords(grid, i, i == (nprocess + page) - 1);
+                await SetupRecords(grid, i, i == limit - 1);
             }
-            
-        }
-        public static int dowloadn;
-        public static int dowloadedTotal;
-        public static bool isDowloading => dowloadn < dowloadedTotal;
-        public void RefeshDowloadTotal()
-        {
-            dowloadn = 0;
-            dowloadedTotal = 0;
         }
 
-        public async Task SetupRecords(Grid grid, int page, bool autoDowload)
+        public void RefreshDownloadTotal()
+        {
+            Download = 0;
+            DownloadedTotal = 0;
+        }
+
+        public async Task SetupRecords(Grid grid, int page, bool autoDownload)
         {
             if (grid == null)
                 return;
-            ("Setting up record for " + grid.nameGrid).Print();
-            dowloadedTotal += 1;
+            
+            GridlyLogging.Log($"Setting up record for {grid.nameGrid}");
+            DownloadedTotal += 1;
 
             UnityWebRequest unityWeb = UnityWebRequest.Get(GetRecordPage(grid.choesenViewID, page));
-            unityWeb.SetRequestHeader("Authorization", "ApiKey " + UserData.singleton.keyAPI);
+            unityWeb.SetRequestHeader("Authorization", $"ApiKey {UserData.Singleton.KeyAPI}");
             unityWeb.SendWebRequest();
 
             while (!unityWeb.isDone)
                 await Task.Yield();
 
-                Debug.Log(unityWeb.isDone);
-                if (unityWeb.isDone)
+            if (unityWeb.isDone)
+            {
+                Download += 1;
+                var json = unityWeb.downloadHandler.text;
+                if (string.IsNullOrEmpty(json))
                 {
-                    dowloadn += 1;
-                    var i = unityWeb.downloadHandler.text;
-                    if (i.CheckOutput())
+                    var N = JSON.Parse(json);
+                    int index = 0;
+
+                    while (N[index].Count != 0)
                     {
+                        Record record = new Record();
 
-                        var N = JSON.Parse(i);
-                        int index = 0;
-                        //string _path = "";
-                        
-                        while (N[index].Count != 0)
+                        record.recordID = N[index]["id"];
+                        record.pathTag = N[index]["path"];
+                        int index1 = 0;
+                        while (N[index]["cells"][index1].Count != 0)
                         {
+                            string value = "";
 
-                            Record record = new Record();
 
-                            record.recordID = N[index]["id"];
-                            record.pathTag = N[index]["path"];
-                            int index1 = 0;
-                            while (N[index]["cells"][index1].Count != 0)
+                            int lengthVal = N[index]["cells"][index1]["value"].Count;
+                            for (int indexValue = 0; indexValue <= lengthVal; indexValue++)
                             {
-
-
-
-                                string value = "";
-
-
-                                int lengthVal = N[index]["cells"][index1]["value"].Count;
-                                for (int indexValue = 0; indexValue <= lengthVal; indexValue++)
-                                {
-                                    if (value != "")
-                                        value += ";";
-                                    if (indexValue == 0)
-                                        value += N[index]["cells"][index1]["value"];
-                                    else
-                                        value += N[index]["cells"][index1]["value"][indexValue];
-
-
-                                }
-
-                                record.columns.Add(new Column(N[index]["cells"][index1]["columnId"], value));
-
-                                index1++;
-                            }
-                            grid.records.Add(record);
-
-                            //done 1 process check
-                            if (index == (step - 1))
-                            {
-                                doneOneProcess?.Invoke();
+                                if (value != "")
+                                    value += ";";
+                                if (indexValue == 0)
+                                    value += N[index]["cells"][index1]["value"];
+                                else
+                                    value += N[index]["cells"][index1]["value"][indexValue];
                             }
 
-                            if (index == (step - 1) && autoDowload)
-                            {
-                                SetupRecords(grid, page + 1);
-                                return;
-                            }
+                            record.columns.Add(new Column(N[index]["cells"][index1]["columnId"], value));
 
-                            index++;
+                            index1++;
                         }
 
+                        grid.records.Add(record);
 
-                        if (dowloadn == dowloadedTotal)
+                        //done 1 process check
+                        if (index == (StepSize - 1))
                         {
-                            "Finished downloading".Print();
                             doneOneProcess?.Invoke();
-                            finishAction?.Invoke();
-                            SaveProject();
                         }
 
-                        //Done
-                        SetDirty();
+                        if (index == (StepSize - 1) && autoDownload)
+                        {
+                            SetupRecords(grid, page + 1);
+                            return;
+                        }
 
-                      
-                       
-                        
+                        index++;
                     }
+
+
+                    if (Download == DownloadedTotal)
+                    {
+                        GridlyLogging.Log("Finished downloading");
+                        doneOneProcess?.Invoke();
+                        finishAction?.Invoke();
+                        SaveProject();
+                    }
+
+                    //Done
+                    SetDirty();
                 }
-           
-
-
+            }
         }
 
 
@@ -200,10 +151,11 @@ namespace Gridly.Internal
         {
             if (grid == null)
                 return;
-            ("Setting up record for " + grid.nameGrid).Print();
+            
+            GridlyLogging.Log($"Setting up record for {grid.nameGrid}");
 
             UnityWebRequest unityWeb = UnityWebRequest.Get(GetRecordPage(grid.choesenViewID, page));
-            unityWeb.SetRequestHeader("Authorization", "ApiKey " + UserData.singleton.keyAPI);
+            unityWeb.SetRequestHeader("Authorization", $"ApiKey {UserData.Singleton.KeyAPI}");
             unityWeb.SendWebRequest();
 
             void action()
@@ -213,13 +165,11 @@ namespace Gridly.Internal
                     var i = unityWeb.downloadHandler.text;
                     if (i.CheckOutput())
                     {
-
                         var N = JSON.Parse(i);
                         int index = 0;
                         //string _path = "";
                         while (N[index].Count != 0)
                         {
-
                             Record record = new Record();
 
                             record.recordID = N[index]["id"];
@@ -238,8 +188,6 @@ namespace Gridly.Internal
                                         value += N[index]["cells"][index1]["value"];
                                     else
                                         value += N[index]["cells"][index1]["value"][indexValue];
-
-
                                 }
 
                                 record.columns.Add(new Column(N[index]["cells"][index1]["columnId"], value));
@@ -252,6 +200,7 @@ namespace Gridly.Internal
                             {
                                 grid.records.Remove(_tempRecord);
                             }
+
                             grid.records.Add(record);
                             index++;
                         }
@@ -260,23 +209,19 @@ namespace Gridly.Internal
                         //Project.singleton.Save();
                     }
                 }
-
-
-
             }
-            CancelWhenDone(action, unityWeb);
 
+            CancelWhenDone(action, unityWeb);
         }
+
         #endregion
 
         public virtual void SetDirty()
         {
-            
         }
 
         public virtual void SaveProject()
         {
-
         }
 
         public static Action process;
@@ -286,7 +231,7 @@ namespace Gridly.Internal
 
         public void CancelWhenDone(Action action, UnityWebRequest unityWebRequest)
         {
-            CancelWhenDone(action, unityWebRequest, UserData.singleton.showServerMess);
+            CancelWhenDone(action, unityWebRequest, UserData.Singleton.showServerMess);
         }
 
         public virtual void CancelWhenDone(Action action, UnityWebRequest unityWebRequest, bool printServerMes)
@@ -297,16 +242,11 @@ namespace Gridly.Internal
                 {
                     process -= action.Invoke;
                     if (printServerMes)
-                        ("Server Message: " + unityWebRequest.downloadHandler.text).Print();
+                        GridlyLogging.Log($"Server Message: {unityWebRequest.downloadHandler.text}");
                 }
             };
 
             process += action.Invoke;
         }
-
-
-
-
     }
-
 }
