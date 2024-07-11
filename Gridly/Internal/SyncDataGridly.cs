@@ -55,6 +55,7 @@ namespace Gridly
 
             // Apply new data when finish setup userlocal
             m_GridlyFunction.finishAction = Finish;
+            m_GridlyFunction.SetupDatabases();
         }
 
         private void Finish()
