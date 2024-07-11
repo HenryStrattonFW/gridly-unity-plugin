@@ -1,3 +1,12 @@
+## What does this fork change:
+Primarily looking to achieve a few things with this fork, to list them simply:
+- Fix up the plugin so that your builds don't break immediately on adding the plugin.
+- Refactor the code to try and provide a consistent style and implement some subjectively better practices.
+- Implement a few improvements to runtime performance by reducing unecessary ToString() opperations and string comparisons.
+
+If I get all of that done, I might then look at a few qwuality of life improvements.
+
+
 # GRIDLY PLUGIN
 ### 1. What does this plugin do?
 This Plugin aids with syncing data between Unity and Gridly.
